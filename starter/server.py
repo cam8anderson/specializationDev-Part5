@@ -20,11 +20,30 @@ def all_movies():
 
     return render_template('all_movies.html', movies=movies)
 
-@app.route('/movies/<movie_id>')
+@app.route('/movies/<movie_id>', methods=['GET' ,'POST'])
 def show_movie(movie_id):
     movie = crud.get_movie_by_id(movie_id)
+    
+    if request.method == 'POST':
 
-    return render_template('movie_details.html', movie=movie)
+        email = request.form.get('email')
+
+        user = crud.get_user_by_email(email)
+
+        if user is None:
+            flash('User does not exist')
+            return redirect('/')
+
+        rating_score = int(request.form.get('rating_score'))
+
+        rating = crud.create_rating(user, movie, rating_score)
+        db.session.add(rating)
+        db.session.commit()
+
+        flash('Rating added successfully!')
+        return redirect('/movies')
+    else:
+        return render_template('movie_details.html', movie=movie)
 
 @app.route('/users')
 def all_users():
@@ -37,6 +56,42 @@ def show_user(user_id):
     user = crud.get_user_by_id(user_id)
 
     return render_template('user_details.html', user=user)
+
+@app.route('/users', methods=['POST'])
+def register_user():
+    email = request.form.get('email')
+    password = request.form.get('password')
+
+    user = crud.get_user_by_email(email)
+
+    if user:
+        flash("this email already exists")
+
+    else:
+        user = crud.create_user(email, password)
+        db.session.add(user)
+        db.session.commit()
+        flash("account created! log in")
+    
+    return redirect('/')
+
+@app.route('/login', methods=['POST'])
+def user_login():
+    email = request.form.get('email')
+    password = request.form.get('password')
+
+    user = crud.get_user_by_email(email)
+
+    if user:
+        check = crud.get_user_password(password, email)
+        if check:
+            flash("you have logged in!")
+        else:
+            flash('password was wrong. try again')
+    else:
+        flash("user doesn't exist please register.")
+
+    return redirect('/')
 
 
 if __name__ == "__main__":
